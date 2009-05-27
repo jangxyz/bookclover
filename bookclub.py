@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-import urllib
+import urllib, re, sys
 #from BeautifulSoup import BeautifulSoup
 #from BaseHTMLProcessor import BaseHTMLProcessor
 
@@ -17,32 +17,7 @@ class Bookclub:
 
 
 class Yes24:
-
-    @staticmethod
-    def search(title=None, isbn=None):
-        params = {
-            'qdomain': '전체'.decode('utf-8').encode('euc-kr'),
-            'query': title.decode('utf-8').encode('euc-kr')
-        }
-        url = "http://www.yes24.com/searchCenter/searchResult.aspx?" + urllib.urlencode(params)
-        print 'fetching from', url, '...'
-        source = urllib.urlopen(url).read()
-        print 'OK'
-        '''
-			<table id="tblProductList" width="100%" cellspacing="0" cellpadding="0" border="0" style="padding : 20 0 20 0">
-        '''
-        #soup = BeautifulSoup(source.decode('euc-kr'))
-        prefix='<td align="center" valign="top" width="100px">'
-
-        sources = source.split(prefix)[1:]
-        print 'got', len(sources), 'books (maybe more on next page?)'
-        books = map(self.parse_search_result, sources)
-        return books
-
-    @staticmethod
-    # name, url, series, authors, pulished_at, price, deliverable_at
-    def parse_search_result(source):
-        pattern = re.compile('''
+    search_pattern = re.compile('''
             <a[ ]href=['"](?P<url>.*?)['"]>             # 페이지 url
               <b>(?P<name>.*?)</b>                      # 책 제목
             </a>\s*
@@ -68,22 +43,54 @@ class Yes24:
                 <b>(?P<deliverable_at>.*?)</b>          # 예상 수령일
                 [ ]받을[ ]수[ ]있습니다.
         ''', re.S | re.X)
-        match = pattern.search(source)
+
+    search_authors_pattern = re.compile('''
+            <a[ ].*?class='m'.*?>
+                ([^<]*?)               # 작가 이름
+            </a>\s*
+            ([^<]*)\s*                # 작가 역할
+            /?
+        ''', re.X)
+
+    @staticmethod
+    def search(title=None, isbn=None):
+        params = {
+            'qdomain': '전체'.decode('utf-8').encode('euc-kr'),
+            'query': title.decode('utf-8').encode('euc-kr')
+        }
+        url = "http://www.yes24.com/searchCenter/searchResult.aspx?" + urllib.urlencode(params)
+        #print 'fetching from', url, '...'
+        #source = urllib.urlopen(url).read()
+        #prefix='<td align="center" valign="top" width="100px">'
+        #sources = source.split(prefix)[1:]
+        sources = Yes24.fetch(url)
+
+        print 'got', len(sources), 'books (maybe more on next page?)'
+        books = map(Yes24.parse_search_result, sources)
+        return books
+
+    @staticmethod
+    def fetch(url):
+        source = urllib.urlopen(url).read()
+        source = source.decode('euc-kr').encode('utf-8')
+        #soup = BeautifulSoup(source.decode('euc-kr'))
+        prefix='<td align="center" valign="top" width="100px">'
+
+        return source.split(prefix)[1:]
+
+
+    @staticmethod
+    # name, url, series, authors, pulished_at, price, deliverable_at
+    def parse_search_result(source):
+        match = Yes24.search_pattern.search(source)
+        if not match: return 
 
         result = {}
         for key in ["name", "url", "authors", "price", "deliverable_at", "published_at", "publisher"]:
-            if key == "authors":
-                continue 
+            if key == "authors": continue 
             result[key] = match.group(key)
 
-        pattern_authors = re.compile('''
-            <a[ ].*?class='m'.*?>
-                (.*?)               # 작가 이름
-            </a>\s*
-            (.*?)                   # 작가 역할
-            \s*[/]?
-        ''', re.X)
-        result["authors"] = pattern_authors.findall(match.group('author_group'))
+        result["authors"] = Yes24.search_authors_pattern.findall(match.group('author_group'))
 
         return Book(result)
 
