@@ -52,11 +52,13 @@ class Yes24:
             /?
         ''', re.X)
 
+
     @staticmethod
     def search(title=None, isbn=None):
+        query = title or str(isbn) or ''
         params = {
             'qdomain': '전체'.decode('utf-8').encode('euc-kr'),
-            'query': title.decode('utf-8').encode('euc-kr')
+            'query': query.decode('utf-8').encode('euc-kr')
         }
         url = "http://www.yes24.com/searchCenter/searchResult.aspx?" + urllib.urlencode(params)
         #print 'fetching from', url, '...'
