@@ -73,8 +73,9 @@ class Yes24:
 
     @staticmethod
     def fetch(url):
-        source = urllib.urlopen(url).read()
-        source = source.decode('euc-kr').encode('utf-8')
+        site = urllib.urlopen(url)
+        source = site.read()
+        #source = source.decode('euc-kr').encode('utf-8')
         #soup = BeautifulSoup(source.decode('euc-kr'))
         prefix='<td align="center" valign="top" width="100px">'
 
